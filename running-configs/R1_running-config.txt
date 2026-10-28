@@ -1,0 +1,121 @@
+! R1 - show running-config final (Asignacion 3 - Monitoreo SNMP con Zabbix)
+! Jose Gabriel Feliz Maria - 2025-0742
+! Se reemplazaron por <OCULTO>: el hash del enable secret y la comunidad SNMP.
+! "lease 1" del pool no aparece porque 1 dia es el valor por defecto.
+!
+Building configuration...
+
+Current configuration : 2122 bytes
+!
+! Last configuration change at 11:22:45 AST Wed Oct 28 2026
+!
+version 15.7
+service timestamps debug datetime msec
+service timestamps log datetime msec localtime show-timezone
+service password-encryption
+!
+hostname R1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+logging buffered 64000 informational
+enable secret 9 <OCULTO>
+!
+no aaa new-model
+!
+!
+!
+clock timezone AST -4 0
+mmi polling-interval 60
+no mmi auto-configure
+no mmi pvc
+mmi snmp-timeout 180
+!
+ip dhcp excluded-address 10.7.42.1 10.7.42.9
+!
+ip dhcp pool LAN-VLAN10
+ network 10.7.42.0 255.255.255.128
+ default-router 10.7.42.1
+!
+ip dhcp pool ZABBIX
+ host 10.7.42.10 255.255.255.128
+ client-identifier 0100.0c29.a89b.d3
+ default-router 10.7.42.1
+!
+!
+!
+no ip domain lookup
+ip cef
+no ipv6 cef
+!
+multilink bundle-name authenticated
+!
+redundancy
+!
+interface Ethernet0/0
+ description TRUNK-SW1-e0/0
+ no ip address
+ duplex auto
+!
+interface Ethernet0/0.10
+ description VLAN10-LAN
+ encapsulation dot1Q 10
+ ip address 10.7.42.1 255.255.255.128
+!
+interface Ethernet0/0.99
+ description VLAN99-GESTION
+ encapsulation dot1Q 99
+ ip address 10.7.42.137 255.255.255.248
+!
+interface Ethernet0/1
+ description SIN-USO
+ no ip address
+ shutdown
+ duplex auto
+!
+interface Ethernet0/2
+ description SIN-USO
+ no ip address
+ shutdown
+ duplex auto
+!
+interface Ethernet0/3
+ description SIN-USO
+ no ip address
+ shutdown
+ duplex auto
+!
+ip forward-protocol nd
+!
+!
+no ip http server
+no ip http secure-server
+!
+ip access-list standard ACL-SNMP-ZABBIX
+ remark Solo el servidor Zabbix puede consultar SNMP
+ permit 10.7.42.10
+ deny   any log
+!
+ipv6 ioam timestamp
+!
+snmp-server community <OCULTO> RO ACL-SNMP-ZABBIX
+snmp-server ifindex persist
+snmp-server location PNETLab - Laboratorio A3 - ITLA
+snmp-server contact Jose Gabriel Feliz Maria - 2025-0742
+!
+!
+control-plane
+!
+banner motd ^CR1 - Acceso restringido. Monitoreo SNMP con Zabbix - 2025-0742^C
+!
+line con 0
+ logging synchronous
+line aux 0
+line vty 0 4
+ login
+ transport input none
+!
+!
+end

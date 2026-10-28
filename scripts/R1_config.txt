@@ -1,0 +1,86 @@
+! =====================================================================
+! R1 - Router Cisco IOL - Asignacion 3: Monitoreo SNMP con Zabbix
+! Jose Gabriel Feliz Maria - 2025-0742
+! Router-on-a-stick por e0/0 hacia SW1:
+!   VLAN 10 LAN      10.7.42.0/25   gw 10.7.42.1   (servidor Zabbix .10 por DHCP)
+!   VLAN 99 GESTION  10.7.42.136/29 gw 10.7.42.137 (SW1 .138)
+! Los valores entre < > se escriben a mano y no se publican.
+! =====================================================================
+
+enable
+configure terminal
+hostname R1
+no ip domain-lookup
+service password-encryption
+service timestamps log datetime msec localtime show-timezone
+clock timezone AST -4 0
+! Primero tipo 5 y luego scrypt (tipo 9), que la reemplaza.
+enable secret <CLAVE_ENABLE>
+enable algorithm-type scrypt secret <CLAVE_ENABLE>
+banner motd #R1 - Acceso restringido. Monitoreo SNMP con Zabbix - 2025-0742#
+
+! ---------- Direccionamiento IP ----------
+interface Ethernet0/0
+ description TRUNK-SW1-e0/0
+ no ip address
+ no shutdown
+interface Ethernet0/0.10
+ description VLAN10-LAN
+ encapsulation dot1Q 10
+ ip address 10.7.42.1 255.255.255.128
+interface Ethernet0/0.99
+ description VLAN99-GESTION
+ encapsulation dot1Q 99
+ ip address 10.7.42.137 255.255.255.248
+interface range Ethernet0/1 - 3
+ description SIN-USO
+ shutdown
+exit
+
+! ---------- Servidor DHCP de la LAN (VLAN 10) ----------
+ip dhcp excluded-address 10.7.42.1 10.7.42.9
+ip dhcp pool LAN-VLAN10
+ network 10.7.42.0 255.255.255.128
+ default-router 10.7.42.1
+ lease 1
+! Reserva para el servidor Zabbix (Kali eth1, MAC 00:0c:29:a8:9b:d3).
+! El cliente manda client-identifier 01 + MAC (ipv4.dhcp-client-id mac en NetworkManager).
+ip dhcp pool ZABBIX
+ host 10.7.42.10 255.255.255.128
+ client-identifier 0100.0c29.a89b.d3
+ default-router 10.7.42.1
+exit
+
+! ---------- SNMP de solo lectura, solo para el Zabbix ----------
+ip access-list standard ACL-SNMP-ZABBIX
+ remark Solo el servidor Zabbix puede consultar SNMP
+ permit host 10.7.42.10
+ deny any log
+exit
+snmp-server community <COMUNIDAD_SNMP> RO ACL-SNMP-ZABBIX
+snmp-server location PNETLab - Laboratorio A3 - ITLA
+snmp-server contact Jose Gabriel Feliz Maria - 2025-0742
+snmp-server ifindex persist
+
+! ---------- Sin administracion por red (no se pide en esta asignacion) ----------
+no ip http server
+line vty 0 4
+ transport input none
+exit
+
+! ---------- Registros ----------
+logging buffered 64000 informational
+
+line con 0
+ exec-timeout 10 0
+ logging synchronous
+end
+write memory
+
+! ---------- Verificacion ----------
+! show ip interface brief
+! show ip dhcp binding
+! show snmp community
+! show access-lists ACL-SNMP-ZABBIX
+! show snmp
+! show logging | include IPACCESSLOG

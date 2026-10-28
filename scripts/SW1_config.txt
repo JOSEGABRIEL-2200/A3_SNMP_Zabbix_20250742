@@ -1,0 +1,97 @@
+! =====================================================================
+! SW1 - Switch Cisco IOL L2 - Asignacion 3: Monitoreo SNMP con Zabbix
+! Jose Gabriel Feliz Maria - 2025-0742
+!   e0/0 trunk hacia R1 (VLAN 10 y 99, nativa 999)
+!   e0/1 VLAN 10: servidor Zabbix (Kali, nube NET-ZABBIX = Cloud1/VMnet2)
+!   Gestion: Vlan99 10.7.42.138/29, gateway 10.7.42.137 (R1)
+! Los valores entre < > se escriben a mano y no se publican.
+! =====================================================================
+
+enable
+configure terminal
+hostname SW1
+no ip domain-lookup
+service password-encryption
+service timestamps log datetime msec localtime show-timezone
+clock timezone AST -4 0
+! Primero tipo 5 y luego scrypt (tipo 9), que la reemplaza si el IOS la acepta.
+enable secret <CLAVE_ENABLE>
+enable algorithm-type scrypt secret <CLAVE_ENABLE>
+banner motd #SW1 - Acceso restringido. Monitoreo SNMP con Zabbix - 2025-0742#
+
+! ---------- VLAN y puertos ----------
+vlan 10
+ name LAN
+vlan 99
+ name GESTION
+vlan 999
+ name SIN-USO
+exit
+interface Ethernet0/0
+ description TRUNK-R1-e0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk native vlan 999
+ switchport trunk allowed vlan 10,99
+ switchport nonegotiate
+ no shutdown
+interface Ethernet0/1
+ description SERVIDOR-ZABBIX (Kali - NET-ZABBIX)
+ switchport mode access
+ switchport access vlan 10
+ switchport port-security maximum 4
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ switchport port-security
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+ no shutdown
+interface range Ethernet0/2 - 3
+ description SIN-USO
+ switchport mode access
+ switchport access vlan 999
+ shutdown
+exit
+
+! ---------- Gestion (IOL L2 necesita "no ip routing" para usar ip default-gateway) ----------
+interface Vlan99
+ description GESTION-SW1
+ ip address 10.7.42.138 255.255.255.248
+ no shutdown
+exit
+no ip routing
+ip default-gateway 10.7.42.137
+
+! ---------- SNMP de solo lectura, solo para el Zabbix ----------
+ip access-list standard ACL-SNMP-ZABBIX
+ remark Solo el servidor Zabbix puede consultar SNMP
+ permit host 10.7.42.10
+ deny any log
+exit
+snmp-server community <COMUNIDAD_SNMP> RO ACL-SNMP-ZABBIX
+snmp-server location PNETLab - Laboratorio A3 - ITLA
+snmp-server contact Jose Gabriel Feliz Maria - 2025-0742
+snmp-server ifindex persist
+
+! ---------- Sin administracion por red (no se pide en esta asignacion) ----------
+no ip http server
+line vty 0 4
+ transport input none
+exit
+
+! ---------- Registros ----------
+logging buffered 64000 informational
+
+line con 0
+ exec-timeout 10 0
+ logging synchronous
+end
+write memory
+
+! ---------- Verificacion ----------
+! show vlan brief
+! show interfaces trunk
+! show ip interface brief
+! show snmp community
+! show access-lists ACL-SNMP-ZABBIX
+! show port-security interface Ethernet0/1

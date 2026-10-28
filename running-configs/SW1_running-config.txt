@@ -1,0 +1,108 @@
+! SW1 - show running-config final (Asignacion 3 - Monitoreo SNMP con Zabbix)
+! Jose Gabriel Feliz Maria - 2025-0742
+! Se reemplazaron por <OCULTO>: el hash del enable secret y la comunidad SNMP.
+! Incluye el cambio de las 13:35 (no ip http server y transport input none en las VTY),
+! verificado con "show running-config | include http|transport" (captura 18).
+! Las MAC sticky de e0/1 son la eth1 del Kali (000c.29a8.9bd3) y la NIC de la VM de
+! PNETLab que forma el puente de la nube (000c.29ce.0254).
+!
+Building configuration...
+
+Current configuration : 2330 bytes
+!
+! Last configuration change at 13:35:52 AST Wed Oct 28 2026
+!
+version 15.2
+service timestamps debug datetime msec
+service timestamps log datetime msec localtime show-timezone
+service password-encryption
+service compress-config
+!
+hostname SW1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+logging buffered 64000 informational
+enable secret 9 <OCULTO>
+!
+no aaa new-model
+clock timezone AST -4 0
+!
+no ip routing
+!
+no ip domain-lookup
+no ip cef
+no ipv6 cef
+!
+spanning-tree mode pvst
+spanning-tree extend system-id
+!
+interface Ethernet0/0
+ description TRUNK-R1-e0/0
+ switchport trunk allowed vlan 10,99
+ switchport trunk encapsulation dot1q
+ switchport trunk native vlan 999
+ switchport mode trunk
+ switchport nonegotiate
+!
+interface Ethernet0/1
+ description SERVIDOR-ZABBIX (Kali - NET-ZABBIX)
+ switchport access vlan 10
+ switchport mode access
+ switchport port-security maximum 4
+ switchport port-security violation restrict
+ switchport port-security mac-address sticky
+ switchport port-security mac-address sticky 000c.29a8.9bd3
+ switchport port-security mac-address sticky 000c.29ce.0254
+ switchport port-security
+ spanning-tree portfast edge
+ spanning-tree bpduguard enable
+!
+interface Ethernet0/2
+ description SIN-USO
+ switchport access vlan 999
+ switchport mode access
+ shutdown
+!
+interface Ethernet0/3
+ description SIN-USO
+ switchport access vlan 999
+ switchport mode access
+ shutdown
+!
+interface Vlan99
+ description GESTION-SW1
+ ip address 10.7.42.138 255.255.255.248
+ no ip route-cache
+!
+ip default-gateway 10.7.42.137
+ip forward-protocol nd
+!
+no ip http server
+!
+ip ssh server algorithm encryption aes128-ctr aes192-ctr aes256-ctr
+ip ssh client algorithm encryption aes128-ctr aes192-ctr aes256-ctr
+!
+ip access-list standard ACL-SNMP-ZABBIX
+ remark Solo el servidor Zabbix puede consultar SNMP
+ permit 10.7.42.10
+ deny   any log
+!
+snmp-server community <OCULTO> RO ACL-SNMP-ZABBIX
+snmp-server location PNETLab - Laboratorio A3 - ITLA
+snmp-server contact Jose Gabriel Feliz Maria - 2025-0742
+snmp ifmib ifindex persist
+!
+control-plane
+!
+banner motd ^CSW1 - Acceso restringido. Monitoreo SNMP con Zabbix - 2025-0742^C
+!
+line con 0
+ logging synchronous
+line aux 0
+line vty 0 4
+ transport input none
+!
+end
