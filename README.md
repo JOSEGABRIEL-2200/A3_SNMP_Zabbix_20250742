@@ -7,7 +7,7 @@
 
 ## 🎥 Video Demostrativo
 
-**[Ver demostración en YouTube](PENDIENTE_LINK_VIDEO)**
+**[Ver demostración en YouTube](https://youtu.be/qUElymAue8I)**
 
 En el video se muestra la hora y fecha del sistema, el rostro y la voz del autor, y la demostración de que la topología cumple su objetivo: el servidor Zabbix recibe su IP por DHCP, lee por SNMP los datos del router y del switch (interfaces, tráfico, CPU, memoria) y nadie más puede hacerlo: la comunidad es de solo lectura, no es `public` y una ACL solo deja consultar al Zabbix.
 
